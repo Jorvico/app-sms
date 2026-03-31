@@ -46,7 +46,7 @@ public class SmsController {
         SmsMessage saved = smsService.saveAndForward(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "ok", true,
-                "message", "SMS guardado y reenviado",
+                "message", "SMS guardado y enviado por API HTTPS",
                 "data", toResponse(saved)
         ));
     }

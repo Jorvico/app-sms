@@ -1,12 +1,12 @@
 # SMS Forwarder para MacroDroid + Render
 
-Proyecto Spring Boot listo para desplegar en Render. Recibe mensajes desde MacroDroid, los guarda en PostgreSQL y los reenvía por correo.
+Proyecto Spring Boot listo para desplegar en Render. Recibe mensajes desde MacroDroid, los guarda en PostgreSQL y los reenvía por correo usando API HTTPS con Resend.
 
 ## Qué hace
 
 - Recibe un SMS por `POST /api/sms`
 - Guarda el mensaje en PostgreSQL
-- Lo reenvía por correo automáticamente
+- Lo reenvía por correo con Resend API HTTPS
 - Permite listar mensajes guardados por `GET /api/sms`
 - Protege ambos endpoints con header `X-API-KEY`
 
@@ -15,7 +15,8 @@ Proyecto Spring Boot listo para desplegar en Render. Recibe mensajes desde Macro
 - Java 17
 - Maven 3.9+
 - Cuenta en Render
-- Cuenta de correo SMTP (Gmail con App Password recomendado)
+- Cuenta en Resend con API key
+- Dominio verificado en Resend para `APP_MAIL_FROM`
 
 ## Variables de entorno
 
@@ -25,12 +26,16 @@ Debes configurar estas variables en Render:
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`
 - `APP_API_KEY`
+- `RESEND_API_KEY`
 - `APP_MAIL_TO`
 - `APP_MAIL_FROM`
-- `MAIL_USERNAME`
-- `MAIL_PASSWORD`
-- `MAIL_HOST` (por defecto `smtp.gmail.com`)
-- `MAIL_PORT` (por defecto `587`)
+- `APP_MAIL_PROVIDER` = `resend`
+
+Ejemplo de remitente:
+
+```text
+APP_MAIL_FROM=Notificaciones <notificaciones@tudominio.com>
+```
 
 ## Ejecución local
 
@@ -74,7 +79,7 @@ Body:
 ```json
 {
   "ok": true,
-  "message": "SMS guardado y reenviado",
+  "message": "SMS guardado y enviado por API HTTPS",
   "data": {
     "id": 1,
     "sender": "Banco",
@@ -120,37 +125,35 @@ Body JSON:
 }
 ```
 
-> Los nombres exactos de las variables pueden cambiar según tu versión de MacroDroid. Toma la idea y selecciona las variables equivalentes del SMS recibido.
-
 ## Deploy en Render
 
 ### Opción rápida
 1. Sube el proyecto a GitHub.
 2. En Render, crea un **Blueprint** apuntando al repositorio.
-3. Render leerá `render.yaml` y creará:
-   - el servicio web
-   - la base de datos PostgreSQL
-4. Completa las variables faltantes de correo.
+3. Render leerá `render.yaml` y creará el servicio y la base de datos.
+4. Completa `RESEND_API_KEY`, `APP_MAIL_TO` y `APP_MAIL_FROM`.
 5. Despliega.
 
 ### Opción manual
 1. Crea un Web Service.
 2. Conecta tu repositorio.
-3. Usa Dockerfile.
+3. Usa el `Dockerfile`.
 4. Crea una base de datos PostgreSQL en Render.
 5. Carga las variables de entorno.
 
-## Gmail App Password
+## Variables mínimas en Render
 
-Si usas Gmail:
-1. Activa verificación en dos pasos en tu cuenta Google.
-2. Genera una App Password.
-3. Usa esa contraseña en `MAIL_PASSWORD`.
+```text
+SPRING_DATASOURCE_URL=jdbc:postgresql://HOST:5432/DB
+SPRING_DATASOURCE_USERNAME=USER
+SPRING_DATASOURCE_PASSWORD=PASSWORD
+APP_API_KEY=tu_api_key
+RESEND_API_KEY=re_xxxxx
+APP_MAIL_TO=tu_correo@dominio.com
+APP_MAIL_FROM=Notificaciones <notificaciones@tudominio.com>
+APP_MAIL_PROVIDER=resend
+```
 
-## Mejoras opcionales
+## Nota sobre Resend
 
-- Agregar panel web con Thymeleaf
-- Exportar mensajes a Excel
-- Filtrar por remitente o fecha
-- Reenviar también a otro webhook
-- Agregar logs y auditoría
+Para enviar a otros destinatarios, `APP_MAIL_FROM` debe usar un dominio verificado en Resend.
