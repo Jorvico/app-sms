@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: sms-forwarder-render
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: sms-forwarder-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: sms-forwarder-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: sms-forwarder-db
+          property: password
+      - key: APP_API_KEY
+        generateValue: true
+      - key: APP_MAIL_TO
+        sync: false
+      - key: APP_MAIL_FROM
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_HOST
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+
+databases:
+  - name: sms-forwarder-db
+    plan: free
+    databaseName: sms_forwarder
+    user: sms_forwarder_user
