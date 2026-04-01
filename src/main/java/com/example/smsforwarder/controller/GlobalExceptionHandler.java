@@ -1,9 +1,7 @@
 package com.example.smsforwarder.controller;
 
-import jakarta.mail.MessagingException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mail.MailException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -27,12 +25,11 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    @ExceptionHandler(MailException.class)
-    public ResponseEntity<?> handleMailError(MailException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<?> handleIllegalState(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
                 "ok", false,
-                "message", "No se pudo reenviar el correo",
-                "detail", ex.getMessage()
+                "message", ex.getMessage()
         ));
     }
 
