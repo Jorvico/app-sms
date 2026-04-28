@@ -16,22 +16,36 @@ public class SmsService {
 
     private final SmsMessageRepository smsMessageRepository;
     private final MailService mailService;
+    private final PaymentMessageParserService parserService;
 
-    public SmsService(SmsMessageRepository smsMessageRepository, MailService mailService) {
+    public SmsService(SmsMessageRepository smsMessageRepository,
+                      MailService mailService,
+                      PaymentMessageParserService parserService) {
         this.smsMessageRepository = smsMessageRepository;
         this.mailService = mailService;
+        this.parserService = parserService;
     }
 
     @Transactional
     public SmsMessage saveAndForward(SmsRequest request) {
+        String message = safeTrim(request.getMessage());
+        ParsedPaymentInfo parsedInfo = parserService.parse(message);
+
         SmsMessage smsMessage = new SmsMessage();
-        smsMessage.setSender(request.getSender().trim());
-        smsMessage.setPhoneNumber(request.getPhoneNumber().trim());
-        smsMessage.setMessage(request.getMessage().trim());
+        smsMessage.setSender(defaultIfBlank(request.getSender(), "DESCONOCIDO"));
+        smsMessage.setPhoneNumber(defaultIfBlank(request.getPhoneNumber(), "N/A"));
+        smsMessage.setMessage(message);
         smsMessage.setReceivedAt(resolveReceivedAt(request.getReceivedAt()));
+        smsMessage.setPaymentAmount(parsedInfo.getAmount());
+        smsMessage.setExtractedBranchName(parsedInfo.getExtractedBranchName());
+        smsMessage.setBranch(parsedInfo.getBranch());
 
         SmsMessage saved = smsMessageRepository.save(smsMessage);
-        mailService.forwardSms(saved);
+
+        // El correo nunca debe tumbar la captura del SMS.
+        // Se intenta enviar en segundo plano y cualquier error queda en logs.
+        mailService.forwardSmsAsync(saved);
+
         return saved;
     }
 
@@ -49,5 +63,16 @@ public class SmsService {
         } catch (DateTimeParseException ex) {
             return LocalDateTime.now();
         }
+    }
+
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private String defaultIfBlank(String value, String defaultValue) {
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+        return value.trim();
     }
 }

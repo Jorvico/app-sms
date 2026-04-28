@@ -5,11 +5,9 @@ import jakarta.validation.constraints.Size;
 
 public class SmsRequest {
 
-    @NotBlank(message = "sender is required")
     @Size(max = 255)
     private String sender;
 
-    @NotBlank(message = "phoneNumber is required")
     @Size(max = 50)
     private String phoneNumber;
 

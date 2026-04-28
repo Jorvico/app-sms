@@ -46,7 +46,7 @@ public class SmsController {
         SmsMessage saved = smsService.saveAndForward(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "ok", true,
-                "message", "SMS guardado y enviado por API HTTPS",
+                "message", "SMS guardado. El correo se intenta enviar en segundo plano",
                 "data", toResponse(saved)
         ));
     }
@@ -77,13 +77,19 @@ public class SmsController {
     }
 
     private SmsResponse toResponse(SmsMessage smsMessage) {
+        String branchName = smsMessage.getBranch() != null ? smsMessage.getBranch().getName() : smsMessage.getExtractedBranchName();
+        String branchFullName = smsMessage.getBranch() != null ? smsMessage.getBranch().getFullName() : null;
+
         return new SmsResponse(
                 smsMessage.getId(),
                 smsMessage.getSender(),
                 smsMessage.getPhoneNumber(),
                 smsMessage.getMessage(),
                 smsMessage.getReceivedAt(),
-                smsMessage.getCreatedAt()
+                smsMessage.getCreatedAt(),
+                smsMessage.getPaymentAmount(),
+                branchName,
+                branchFullName
         );
     }
 }

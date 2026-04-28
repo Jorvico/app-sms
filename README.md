@@ -157,3 +157,50 @@ APP_MAIL_PROVIDER=resend
 ## Nota sobre Resend
 
 Para enviar a otros destinatarios, `APP_MAIL_FROM` debe usar un dominio verificado en Resend.
+
+## Cambios PRO v3 - sucursales y correo robusto
+
+Esta versión incluye:
+
+- Nueva tabla `branches` con sucursales iniciales:
+  - `1 | GLOBAL FARMA PR | Prado`
+  - `2 | GLOBAL FARMA QU | Quintanares`
+  - `3 | GLOBAL FARMA LA | Fragua`
+  - `4 | RED FARMA | Redfarma`
+  - `5 | PORTAL DE SAN | San Ignacio`
+- Seed automático de sucursales con `BranchDataInitializer`.
+- Extracción automática por Regex de:
+  - valor del pago: texto entre `por` y `con comision`.
+  - sucursal: texto entre `, a` y `en la terminal`.
+- Normalización automática:
+  - `DROGUERIA GLOBAL FARMA PR` → `GLOBAL FARMA PR` → `Prado`.
+  - `FARMACENTER PORTAL DE SAN` → `PORTAL DE SAN` → `San Ignacio`.
+- Nuevo asunto de correo:
+  - `Pago por $xx.xxx en FullName`
+  - ejemplo: `Pago por $8.500 en Quintanares`.
+- El SMS siempre se guarda primero en base de datos.
+- El correo se intenta enviar en segundo plano con `@Async`.
+- Si Resend falla o se demora, la API no debe devolver 500 por ese motivo.
+
+### Nuevas columnas en `sms_messages`
+
+Con `spring.jpa.hibernate.ddl-auto=update`, Hibernate agrega automáticamente:
+
+- `payment_amount`
+- `extracted_branch_name`
+- `branch_id`
+
+### Respuesta POST esperada
+
+```json
+{
+  "ok": true,
+  "message": "SMS guardado. El correo se intenta enviar en segundo plano",
+  "data": {
+    "id": 346,
+    "paymentAmount": 8500,
+    "branchName": "GLOBAL FARMA QU",
+    "branchFullName": "Quintanares"
+  }
+}
+```
