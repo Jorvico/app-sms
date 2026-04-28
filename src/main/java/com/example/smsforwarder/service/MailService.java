@@ -117,27 +117,16 @@ public class MailService {
 
     private String buildHtml(SmsMessage smsMessage) {
         return """
-                <h2>Nuevo SMS recibido</h2>
-                <p><strong>Asunto generado:</strong> %s</p>
-                <p><strong>Valor detectado:</strong> %s</p>
-                <p><strong>Sucursal detectada:</strong> %s</p>
-                <p><strong>Nombre completo sucursal:</strong> %s</p>
+                <p><strong>Valor:</strong> %s</p>
+                <p><strong>Sucursal:</strong> %s</p>
                 <hr>
-                <p><strong>Remitente:</strong> %s</p>
-                <p><strong>Número:</strong> %s</p>
                 <p><strong>Fecha del SMS:</strong> %s</p>
-                <p><strong>Fecha de registro:</strong> %s</p>
                 <p><strong>Mensaje:</strong></p>
                 <pre>%s</pre>
                 """.formatted(
-                escapeHtml(buildSubject(smsMessage)),
                 escapeHtml(formatAmount(smsMessage.getPaymentAmount())),
-                escapeHtml(smsMessage.getExtractedBranchName()),
                 escapeHtml(resolveBranchFullName(smsMessage)),
-                escapeHtml(smsMessage.getSender()),
-                escapeHtml(smsMessage.getPhoneNumber()),
                 smsMessage.getReceivedAt(),
-                smsMessage.getCreatedAt(),
                 escapeHtml(smsMessage.getMessage())
         );
     }
