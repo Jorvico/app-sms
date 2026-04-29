@@ -1,0 +1,14 @@
+ALTER TABLE sms_messages
+ADD COLUMN IF NOT EXISTS email_retry_count INTEGER DEFAULT 0;
+
+ALTER TABLE sms_messages
+ADD COLUMN IF NOT EXISTS email_status VARCHAR(20) DEFAULT 'PENDING';
+
+ALTER TABLE sms_messages
+ADD COLUMN IF NOT EXISTS email_last_error TEXT;
+
+ALTER TABLE sms_messages
+ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMP;
+
+ALTER TABLE sms_messages
+ADD COLUMN IF NOT EXISTS next_email_retry_at TIMESTAMP;
