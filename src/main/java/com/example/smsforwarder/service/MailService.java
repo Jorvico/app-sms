@@ -17,7 +17,8 @@ import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Locale;
@@ -26,7 +27,10 @@ import java.util.Map;
 @Service
 public class MailService {
 
+    private static final ZoneId STORAGE_ZONE = ZoneId.of("UTC");
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Bogota");
     private static final DateTimeFormatter SUBJECT_TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
+    private static final DateTimeFormatter BODY_DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm a", Locale.ENGLISH);
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -92,10 +96,19 @@ public class MailService {
     }
 
     private String resolveSubjectTime(LocalDateTime receivedAt) {
-        if (receivedAt != null) {
-            return receivedAt.format(SUBJECT_TIME_FORMAT);
+        return toBusinessZone(receivedAt).format(SUBJECT_TIME_FORMAT);
+    }
+
+    private String resolveReceivedAtForBody(LocalDateTime receivedAt) {
+        return toBusinessZone(receivedAt).format(BODY_DATE_TIME_FORMAT);
+    }
+
+    private ZonedDateTime toBusinessZone(LocalDateTime receivedAt) {
+        if (receivedAt == null) {
+            return ZonedDateTime.now(BUSINESS_ZONE);
         }
-        return LocalTime.now().format(SUBJECT_TIME_FORMAT);
+        // Las fechas se guardan/tratan en UTC y se muestran en hora Colombia.
+        return receivedAt.atZone(STORAGE_ZONE).withZoneSameInstant(BUSINESS_ZONE);
     }
 
     private String formatAmount(BigDecimal amount) {
@@ -128,7 +141,7 @@ public class MailService {
                 """.formatted(
                 escapeHtml(formatAmount(smsMessage.getPaymentAmount())),
                 escapeHtml(resolveBranchFullName(smsMessage)),
-                smsMessage.getReceivedAt(),
+                escapeHtml(resolveReceivedAtForBody(smsMessage.getReceivedAt())),
                 escapeHtml(smsMessage.getMessage())
         );
     }
