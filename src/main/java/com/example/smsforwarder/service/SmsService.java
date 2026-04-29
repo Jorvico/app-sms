@@ -15,19 +15,16 @@ import java.time.format.DateTimeParseException;
 public class SmsService {
 
     private final SmsMessageRepository smsMessageRepository;
-    private final MailService mailService;
     private final PaymentMessageParserService parserService;
 
     public SmsService(SmsMessageRepository smsMessageRepository,
-                      MailService mailService,
                       PaymentMessageParserService parserService) {
         this.smsMessageRepository = smsMessageRepository;
-        this.mailService = mailService;
         this.parserService = parserService;
     }
 
     @Transactional
-    public SmsMessage saveAndForward(SmsRequest request) {
+    public SmsMessage saveAndQueueEmail(SmsRequest request) {
         String message = safeTrim(request.getMessage());
         ParsedPaymentInfo parsedInfo = parserService.parse(message);
 
@@ -40,13 +37,14 @@ public class SmsService {
         smsMessage.setExtractedBranchName(parsedInfo.getExtractedBranchName());
         smsMessage.setBranch(parsedInfo.getBranch());
 
-        SmsMessage saved = smsMessageRepository.save(smsMessage);
+        smsMessage.setEmailStatus(SmsMessage.EMAIL_PENDING);
+        smsMessage.setEmailRetryCount(0);
+        smsMessage.setEmailLastError(null);
+        smsMessage.setEmailSentAt(null);
+        smsMessage.setNextEmailRetryAt(LocalDateTime.now());
 
-        // El correo nunca debe tumbar la captura del SMS.
-        // Se intenta enviar en segundo plano y cualquier error queda en logs.
-        mailService.forwardSmsAsync(saved);
-
-        return saved;
+        // Guardar el SMS es lo crítico. El correo se envía después por scheduler.
+        return smsMessageRepository.save(smsMessage);
     }
 
     @Transactional(readOnly = true)

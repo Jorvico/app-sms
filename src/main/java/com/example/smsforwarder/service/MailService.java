@@ -10,19 +10,23 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
 @Service
 public class MailService {
+
+    private static final DateTimeFormatter SUBJECT_TIME_FORMAT = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH);
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -44,19 +48,9 @@ public class MailService {
         this.objectMapper = new ObjectMapper();
     }
 
-    @Async
-    public void forwardSmsAsync(SmsMessage smsMessage) {
-        try {
-            forwardSms(smsMessage);
-        } catch (Exception e) {
-            System.out.println("No se pudo enviar correo para SMS ID " + smsMessage.getId() + ": " + e.getMessage());
-        }
-    }
-
-    private void forwardSms(SmsMessage smsMessage) throws Exception {
+    public void sendSmsNotification(SmsMessage smsMessage) throws Exception {
         if (apiKey == null || apiKey.isBlank() || from == null || from.isBlank() || to == null || to.isBlank()) {
-            System.out.println("Correo omitido: faltan RESEND_API_KEY, APP_MAIL_FROM o APP_MAIL_TO");
-            return;
+            throw new IllegalStateException("Faltan RESEND_API_KEY, APP_MAIL_FROM o APP_MAIL_TO");
         }
 
         String url = "https://api.resend.com/emails";
@@ -76,24 +70,32 @@ public class MailService {
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
 
         if (!response.getStatusCode().is2xxSuccessful()) {
-            System.out.println("Resend respondió error para SMS ID " + smsMessage.getId() + ": " + response.getBody());
+            throw new IllegalStateException("Resend respondió " + response.getStatusCode() + ": " + response.getBody());
         }
     }
 
     private String buildSubject(SmsMessage smsMessage) {
         String amount = formatAmount(smsMessage.getPaymentAmount());
         String branchFullName = resolveBranchFullName(smsMessage);
+        String time = resolveSubjectTime(smsMessage.getReceivedAt());
 
         if (amount != null && branchFullName != null) {
-            return "Pago por $" + amount + " en " + branchFullName;
+            return "Pago $" + amount + " en " + branchFullName + " [" + time + "]";
         }
         if (amount != null) {
-            return "Pago por $" + amount;
+            return "Pago $" + amount + " [" + time + "]";
         }
         if (branchFullName != null) {
-            return "Pago en " + branchFullName;
+            return "Pago en " + branchFullName + " [" + time + "]";
         }
-        return "Nuevo SMS recibido";
+        return "Nuevo SMS recibido [" + time + "]";
+    }
+
+    private String resolveSubjectTime(LocalDateTime receivedAt) {
+        if (receivedAt != null) {
+            return receivedAt.format(SUBJECT_TIME_FORMAT);
+        }
+        return LocalTime.now().format(SUBJECT_TIME_FORMAT);
     }
 
     private String formatAmount(BigDecimal amount) {

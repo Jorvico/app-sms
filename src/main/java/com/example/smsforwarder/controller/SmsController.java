@@ -43,10 +43,10 @@ public class SmsController {
                     .body(Map.of("ok", false, "message", "API key inválida"));
         }
 
-        SmsMessage saved = smsService.saveAndForward(request);
+        SmsMessage saved = smsService.saveAndQueueEmail(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "ok", true,
-                "message", "SMS guardado. El correo se intenta enviar en segundo plano",
+                "message", "SMS guardado. El correo queda en cola y se reintenta hasta enviarse",
                 "data", toResponse(saved)
         ));
     }
@@ -89,7 +89,12 @@ public class SmsController {
                 smsMessage.getCreatedAt(),
                 smsMessage.getPaymentAmount(),
                 branchName,
-                branchFullName
+                branchFullName,
+                smsMessage.getEmailStatus(),
+                smsMessage.getEmailRetryCount(),
+                smsMessage.getEmailLastError(),
+                smsMessage.getEmailSentAt(),
+                smsMessage.getNextEmailRetryAt()
         );
     }
 }

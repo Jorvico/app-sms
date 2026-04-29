@@ -204,3 +204,68 @@ Con `spring.jpa.hibernate.ddl-auto=update`, Hibernate agrega automáticamente:
   }
 }
 ```
+
+## Cambios PRO v4 - cola de correo con reintentos y sin duplicados
+
+Esta versión cambia el flujo de envío de correo para hacerlo más confiable:
+
+```text
+MacroDroid -> API -> guardar SMS -> responder 201 rápido
+                         |
+                         v
+                scheduler reintenta correo
+```
+
+### Estados de correo
+
+La tabla `sms_messages` ahora incluye:
+
+- `email_status`: `PENDING`, `SENDING`, `SENT`, `FAILED`
+- `email_retry_count`
+- `email_last_error`
+- `email_sent_at`
+- `next_email_retry_at`
+
+### Regla principal
+
+- El SMS se guarda siempre.
+- La API responde rápido a MacroDroid.
+- El correo se envía por un scheduler cada 5 segundos.
+- Si Resend falla, se marca `FAILED` y se reintenta.
+- Si ya está `SENT`, no se vuelve a enviar.
+- Se usa el estado `SENDING` para evitar duplicados mientras se procesa.
+
+### Asunto del correo
+
+Formato:
+
+```text
+Pago $8.500 en Prado [02:35 PM]
+```
+
+Esto ayuda a que Gmail no agrupe pagos del mismo valor en la misma conversación.
+
+### Cuerpo del correo
+
+El cuerpo del correo solo incluye:
+
+- Mensaje original
+- Fecha recibido
+
+### Consulta SQL útil
+
+```sql
+SELECT id, email_status, email_retry_count, email_last_error, email_sent_at, next_email_retry_at, created_at
+FROM sms_messages
+ORDER BY created_at DESC;
+```
+
+### Configuración opcional
+
+Puedes cambiar la frecuencia del scheduler en Render:
+
+```text
+APP_EMAIL_RETRY_FIXED_DELAY_MS=5000
+```
+
+Por defecto revisa cada 5 segundos.
